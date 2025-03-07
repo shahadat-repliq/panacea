@@ -1,6 +1,8 @@
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 import os
+
 
 load_dotenv(override=True)
 
@@ -22,7 +24,7 @@ DEFAULT_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
-PROJECT_APPS = ["core", "projectile"]
+PROJECT_APPS = ["core", "projectile", "product", "authentication", "cart"]
 
 THIRD_PARTY_APPS = [
     "rest_framework",
@@ -30,6 +32,7 @@ THIRD_PARTY_APPS = [
     "debug_toolbar",
     "simple_history",
     "rest_framework_simplejwt",
+    "phonenumber_field",
 ]
 
 INSTALLED_APPS = DEFAULT_APPS + PROJECT_APPS + THIRD_PARTY_APPS
@@ -97,7 +100,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Dhaka"
 
 USE_I18N = True
 
@@ -112,3 +115,12 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     )
 }
+SIMPLE_JWT = {
+    "USER_ID_FIELD": "uid",
+    "USER_ID_CLAIM": "uid",
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=15),
+}
+
+
+APPEND_SLASH = False

@@ -5,8 +5,20 @@ from .models import User
 
 class BaseUser(UserAdmin):
     model = User
-    list_display = ("username", "email", "is_staff")
-    ordering = ["email"]
+    list_display = (
+        # "username",
+        "email",
+        "is_staff",
+        "first_name",
+        "last_name",
+        "phone_number",
+        "status",
+        "created_at",
+        "last_login",
+    )
+    ordering = ["created_at", "first_name", "last_name", "status"]
+    search_fields = ["first_name", "last_name", "phone_number", "status"]
+    list_filter = ["is_staff", "status"]
 
 
 admin.site.register(User, BaseUser)
