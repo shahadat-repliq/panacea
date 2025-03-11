@@ -1,5 +1,8 @@
 from django.urls import path
 
-from core.rest.views.user_register import UserRegisterAPIView
+from core.rest.views.user_register import UserRegisterViewSet, UserViewSet
 
-urlpatterns = [path("/register", UserRegisterAPIView.as_view(), name="register")]
+urlpatterns = [
+    path("", UserViewSet.as_view(), name="user"),
+    path("/register", UserRegisterViewSet.as_view(), name="register"),
+]

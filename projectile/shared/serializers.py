@@ -1,5 +1,3 @@
-"""Here is the some common serializer which used whole project wise"""
-
 from rest_framework import serializers
 
 from core.models import User

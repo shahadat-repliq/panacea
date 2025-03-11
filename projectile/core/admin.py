@@ -13,6 +13,7 @@ class BaseUser(UserAdmin):
         "last_name",
         "phone_number",
         "status",
+        "role",
         "created_at",
         "last_login",
     )
