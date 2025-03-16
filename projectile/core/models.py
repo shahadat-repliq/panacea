@@ -26,7 +26,7 @@ class User(AbstractBaseUser, BaseUserModel, PermissionsMixin):
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
-    last_login = models.DateTimeField(auto_now=True)
+    # last_login = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = "phone_number"
 

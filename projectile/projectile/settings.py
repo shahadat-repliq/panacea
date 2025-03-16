@@ -24,7 +24,15 @@ DEFAULT_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
-PROJECT_APPS = ["core", "projectile", "product", "authentication", "cart"]
+PROJECT_APPS = [
+    "core",
+    "projectile",
+    "product",
+    "authentication",
+    "cart",
+    "address",
+    "order",
+]
 
 THIRD_PARTY_APPS = [
     "rest_framework",
