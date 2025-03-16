@@ -3,23 +3,13 @@ from django.contrib.auth import get_user_model
 from cart.models import Cart, CartItem
 from product.models import Product
 from shared.serializers import UserSerializer
+from shared.serializers import ProductSerializer
 
 User = get_user_model()
 
 
-class CartProductSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Product
-        fields = [
-            "uid",
-            "title",
-            "unit_price",
-            "quantity",
-        ]
-
-
 class CartItemSerializer(serializers.ModelSerializer):
-    product = CartProductSerializer()
+    product = ProductSerializer()
     total_price = serializers.SerializerMethodField()
 
     def get_total_price(self, cart_item):
