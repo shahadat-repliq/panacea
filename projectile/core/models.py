@@ -2,16 +2,9 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
+from shared.choices import UserRole
 from .rest.managers.user_manager import UserManager
 from shared.base_model import BaseUserModel
-
-
-class UserRole(models.TextChoices):
-    ADMIN = "ADMIN", "Admin"
-    OWNER = "OWNER", "Owner"
-    MANAGER = "MANAGER", "Manager"
-    STAFF = "STAFF", "Staff"
-    CUSTOMER = "CUSTOMER", "Customer"
 
 
 class User(AbstractBaseUser, BaseUserModel, PermissionsMixin):

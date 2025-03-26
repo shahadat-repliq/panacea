@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 
+from organization.models import Organization
 from shared.base_model import BaseProductModel
 
 
@@ -23,6 +24,10 @@ class Product(BaseProductModel):
     type = models.CharField(
         max_length=10, choices=ProductForm.choices, default=ProductForm.DEFAULT
     )
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, blank=True, null=True
+    )
+    is_custom = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title

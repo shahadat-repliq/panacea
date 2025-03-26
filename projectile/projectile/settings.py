@@ -32,6 +32,7 @@ PROJECT_APPS = [
     "cart",
     "address",
     "order",
+    "organization",
 ]
 
 THIRD_PARTY_APPS = [
