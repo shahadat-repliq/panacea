@@ -15,6 +15,10 @@ class Organization(BaseModel):
         return self.name
 
 
+class OrganizationProduct(BaseModel):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+
+
 class OrganizationUser(BaseModel):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="users"
@@ -33,7 +37,9 @@ class OrganizationUser(BaseModel):
 
 class OrganizationInventory(BaseModel):
     inventory_name = models.CharField(max_length=100)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="inventories"
+    )
 
     def __str__(self):
         return f"{self.inventory_name} {self.pk}"
@@ -41,10 +47,10 @@ class OrganizationInventory(BaseModel):
 
 class OrganizationInventoryProduct(BaseModel):
     organization_inventory = models.ForeignKey(
-        OrganizationInventory, on_delete=models.CASCADE
+        OrganizationInventory, on_delete=models.CASCADE, related_name="products"
     )
     product = models.ForeignKey("product.Product", on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
+    # quantity = models.PositiveIntegerField()
 
     def __str__(self):
         return f"{self.organization_inventory.inventory_name}"

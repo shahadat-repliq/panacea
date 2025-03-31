@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from organization.models import Organization, OrganizationUser
+from organization.models import (
+    Organization,
+    OrganizationUser,
+    OrganizationInventory,
+    OrganizationInventoryProduct,
+)
 
 
 class OrganizationAdmin(admin.ModelAdmin):
@@ -22,3 +27,5 @@ class OrganizationUserAdmin(admin.ModelAdmin):
 
 admin.site.register(Organization, OrganizationAdmin)
 admin.site.register(OrganizationUser, OrganizationUserAdmin)
+admin.site.register(OrganizationInventory)
+admin.site.register(OrganizationInventoryProduct)

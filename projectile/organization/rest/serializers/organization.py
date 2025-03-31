@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from organization.models import (
@@ -10,6 +11,8 @@ from organization.models import (
     OrganizationInventory,
     OrganizationInventoryProduct,
 )
+from product.models import Product, ProductForm
+from product.rest.serializers.product import ProductSerializer
 from shared.serializers import UserSerializer
 
 User = get_user_model()
@@ -30,9 +33,9 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
     users = serializers.SerializerMethodField()
 
     def get_users(self, obj):
-        organization_users = OrganizationUser.objects.select_related("user").filter(
-            organization__uid=obj.uid
-        )
+        organization_users = OrganizationUser.objects.select_related(
+            "user", "organization"
+        ).filter(organization__uid=obj.uid)
 
         users_data = [
             {
@@ -69,20 +72,73 @@ class OrganizationUserSerializer(serializers.ModelSerializer):
 
 
 class OrganizationInventorySerializer(serializers.ModelSerializer):
+    organization = OrganizationSerializer(read_only=True)
+
     class Meta:
         model = OrganizationInventory
-        fields = ["uid", "organization"]
+        fields = ["uid", "inventory_name", "organization"]
+
+
+class CreateOrganizationInventorySerializer(serializers.Serializer):
+    inventory_name = serializers.CharField()
+
+    def create(self, validated_data):
+        organization = self.context.get("organization")
+        inventory_name = validated_data["inventory_name"]
+
+        return OrganizationInventory.objects.create(
+            organization_id=organization, inventory_name=inventory_name
+        )
+
+
+class SimpleOrganizationProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ["uid", "name", "status"]
 
 
 class OrganizationInventoryProductSerializer(serializers.ModelSerializer):
+    uid = serializers.UUIDField(source="product.uid", read_only=True)
+    title = serializers.CharField(source="product.title")
+    description = serializers.CharField(source="product.description")
+    image = serializers.ImageField(
+        source="product.image", required=False, allow_null=True
+    )
+    unit_price = serializers.DecimalField(
+        source="product.unit_price", max_digits=10, decimal_places=2
+    )
+    quantity = serializers.IntegerField(source="product.quantity")
+    type = serializers.ChoiceField(source="product.type", choices=ProductForm.choices)
+    is_active = serializers.BooleanField(source="product.is_active", default=True)
+    organization = SimpleOrganizationProductSerializer(
+        source="product.organization", read_only=True
+    )
+
     class Meta:
         model = OrganizationInventoryProduct
         fields = [
             "uid",
-            "product",
-            "organization_inventory",
-            "created_at",
+            "title",
+            "description",
+            "image",
+            "unit_price",
+            "quantity",
+            "type",
+            "is_active",
+            "organization",
         ]
+
+    def create(self, validated_data):
+        product_data = validated_data.pop("product")
+        organization = self.context.get("organization")
+
+        product = Product.objects.create(**product_data, organization_id=organization)
+
+        organization_inventory_product = OrganizationInventoryProduct.objects.create(
+            product=product, **validated_data
+        )
+
+        return organization_inventory_product
 
 
 class CreateOrganizationSerializer(serializers.Serializer):
@@ -91,13 +147,14 @@ class CreateOrganizationSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate_phone_number(self, value):
-        # First, get the user with the given phone number
         user = User.objects.filter(phone_number=value).first()
 
-        # Check if the user exists and if they are already part of an organization
         if (
             user
-            and OrganizationUser.objects.select_related("organization", "user")
+            and OrganizationUser.objects.select_related(
+                "organization",
+                "user",
+            )
             .filter(user=user)
             .exists()
         ):
@@ -123,9 +180,88 @@ class CreateOrganizationSerializer(serializers.Serializer):
             )
 
             organization_user = OrganizationUser.objects.select_related(
-                "organization"
+                "organization", "user"
             ).create(organization=organization, user=user, role="OWNER")
 
-            OrganizationInventory.objects.create(organization=organization)
+            OrganizationInventory.objects.create(
+                organization=organization, inventory_name="Default Inventory"
+            )
 
             return organization_user
+
+
+class OrganizationProductSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Product
+        fields = [
+            "uid",
+            "title",
+            "description",
+            "image",
+            "unit_price",
+            "quantity",
+            "type",
+            "is_active",
+            "organization",
+        ]
+
+
+class OrganizationInventoryDetailSerializer(serializers.ModelSerializer):
+    products = OrganizationInventoryProductSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = OrganizationInventory
+        fields = ["uid", "inventory_name", "organization", "products"]
+
+
+class OrganizationInventoryProductDetailSerializer(serializers.ModelSerializer):
+    uid = serializers.UUIDField(source="product.uid", read_only=True)
+    title = serializers.CharField(source="product.title")
+    description = serializers.CharField(source="product.description")
+    image = serializers.ImageField(
+        source="product.image", required=False, allow_null=True
+    )
+    unit_price = serializers.DecimalField(
+        source="product.unit_price", max_digits=10, decimal_places=2
+    )
+    quantity = serializers.IntegerField(source="product.quantity")
+    type = serializers.ChoiceField(source="product.type", choices=ProductForm.choices)
+    is_active = serializers.BooleanField(source="product.is_active")
+
+    class Meta:
+        model = OrganizationInventoryProduct
+        fields = [
+            "uid",
+            "title",
+            "description",
+            "image",
+            "unit_price",
+            "quantity",
+            "type",
+            "is_active",
+        ]
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        # Remove 'uid' during PATCH
+        if self.context.get("request") and self.context["request"].method == "PATCH":
+            representation.pop("uid", None)
+
+        return representation
+
+    def update(self, instance, validated_data):
+        product_data = validated_data.pop("product", {})
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        for attr, value in product_data.items():
+            setattr(instance.product, attr, value)
+
+        instance.product.save()
+
+        instance.save()
+
+        return instance
