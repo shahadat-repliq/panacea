@@ -1,9 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
-
-from shared.base_model import BaseModel
-from shared.choices import UserRole
+from shared.base_model import BaseModel, BaseProductModel
+from shared.choices import UserRole, ProductForm
 
 User = get_user_model()
 
@@ -15,8 +14,24 @@ class Organization(BaseModel):
         return self.name
 
 
-class OrganizationProduct(BaseModel):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+class OrganizationProduct(BaseProductModel):
+    title = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    image = models.ImageField(blank=True, null=True)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    type = models.CharField(
+        max_length=10, choices=ProductForm.choices, default=ProductForm.DEFAULT
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+    )
+    is_custom = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.title
 
 
 class OrganizationUser(BaseModel):
@@ -49,8 +64,7 @@ class OrganizationInventoryProduct(BaseModel):
     organization_inventory = models.ForeignKey(
         OrganizationInventory, on_delete=models.CASCADE, related_name="products"
     )
-    product = models.ForeignKey("product.Product", on_delete=models.CASCADE)
-    # quantity = models.PositiveIntegerField()
+    product = models.ForeignKey(OrganizationProduct, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.organization_inventory.inventory_name}"

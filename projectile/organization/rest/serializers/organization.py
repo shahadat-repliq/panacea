@@ -1,19 +1,20 @@
 from django.contrib.auth import get_user_model
+from rest_framework.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import transaction
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
-from rest_framework.response import Response
 
 from organization.models import (
     Organization,
     OrganizationUser,
     OrganizationInventory,
     OrganizationInventoryProduct,
+    OrganizationProduct,
 )
-from product.models import Product, ProductForm
-from product.rest.serializers.product import ProductSerializer
-from shared.serializers import UserSerializer
+from product.models import Product
+from shared.choices import ProductForm
+from shared.validators import ProductValidation
 
 User = get_user_model()
 
@@ -83,12 +84,13 @@ class CreateOrganizationInventorySerializer(serializers.Serializer):
     inventory_name = serializers.CharField()
 
     def create(self, validated_data):
-        organization = self.context.get("organization")
-        inventory_name = validated_data["inventory_name"]
+        with transaction.atomic():
+            organization = self.context.get("organization")
+            inventory_name = validated_data["inventory_name"]
 
-        return OrganizationInventory.objects.create(
-            organization_id=organization, inventory_name=inventory_name
-        )
+            return OrganizationInventory.objects.create(
+                organization_id=organization, inventory_name=inventory_name
+            )
 
 
 class SimpleOrganizationProductSerializer(serializers.ModelSerializer):
@@ -105,9 +107,14 @@ class OrganizationInventoryProductSerializer(serializers.ModelSerializer):
         source="product.image", required=False, allow_null=True
     )
     unit_price = serializers.DecimalField(
-        source="product.unit_price", max_digits=10, decimal_places=2
+        source="product.unit_price",
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(1)],
     )
-    quantity = serializers.IntegerField(source="product.quantity")
+    quantity = serializers.IntegerField(
+        source="product.quantity", validators=[MinValueValidator(1)]
+    )
     type = serializers.ChoiceField(source="product.type", choices=ProductForm.choices)
     is_active = serializers.BooleanField(source="product.is_active", default=True)
     organization = SimpleOrganizationProductSerializer(
@@ -129,16 +136,21 @@ class OrganizationInventoryProductSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        product_data = validated_data.pop("product")
-        organization = self.context.get("organization")
+        with transaction.atomic():
+            product_data = validated_data.pop("product")
+            organization = self.context.get("organization")
 
-        product = Product.objects.create(**product_data, organization_id=organization)
+            product = OrganizationProduct.objects.create(
+                **product_data, organization_id=organization
+            )
 
-        organization_inventory_product = OrganizationInventoryProduct.objects.create(
-            product=product, **validated_data
-        )
+            organization_inventory_product = (
+                OrganizationInventoryProduct.objects.create(
+                    product=product, **validated_data
+                )
+            )
 
-        return organization_inventory_product
+            return organization_inventory_product
 
 
 class CreateOrganizationSerializer(serializers.Serializer):
@@ -192,19 +204,35 @@ class CreateOrganizationSerializer(serializers.Serializer):
 
 class OrganizationProductSerializer(serializers.ModelSerializer):
 
-    class Meta:
-        model = Product
-        fields = [
-            "uid",
-            "title",
-            "description",
-            "image",
-            "unit_price",
-            "quantity",
-            "type",
-            "is_active",
-            "organization",
-        ]
+    def get_product(self, obj):
+        if isinstance(obj, Product):
+            return {
+                "uid": obj.uid,
+                "title": obj.title,
+                "description": obj.description,
+                "image": obj.image.url if obj.image else None,
+                "unit_price": obj.unit_price,
+                "quantity": obj.quantity,
+                "type": obj.type,
+                "is_active": obj.is_active,
+                "organization": obj.organization.uid if obj.organization else None,
+            }
+        elif isinstance(obj, OrganizationProduct):
+            return {
+                "uid": obj.uid,
+                "title": obj.title,
+                "description": obj.description,
+                "image": obj.image.url if obj.image else None,
+                "unit_price": obj.unit_price,
+                "quantity": obj.quantity,
+                "type": obj.type,
+                "is_active": obj.is_active,
+                "organization": obj.organization.uid,
+            }
+
+    def to_representation(self, instance):
+        product_data = self.get_product(instance)
+        return product_data
 
 
 class OrganizationInventoryDetailSerializer(serializers.ModelSerializer):
@@ -223,11 +251,18 @@ class OrganizationInventoryProductDetailSerializer(serializers.ModelSerializer):
         source="product.image", required=False, allow_null=True
     )
     unit_price = serializers.DecimalField(
-        source="product.unit_price", max_digits=10, decimal_places=2
+        source="product.unit_price",
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(1)],
     )
-    quantity = serializers.IntegerField(source="product.quantity")
+    quantity = serializers.IntegerField(
+        source="product.quantity", validators=[MinValueValidator(1)]
+    )
     type = serializers.ChoiceField(source="product.type", choices=ProductForm.choices)
-    is_active = serializers.BooleanField(source="product.is_active")
+    is_active = serializers.BooleanField(
+        source="product.is_active",
+    )
 
     class Meta:
         model = OrganizationInventoryProduct
@@ -252,16 +287,18 @@ class OrganizationInventoryProductDetailSerializer(serializers.ModelSerializer):
         return representation
 
     def update(self, instance, validated_data):
-        product_data = validated_data.pop("product", {})
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        with transaction.atomic():
+            product_data = validated_data.pop("product", {})
 
-        for attr, value in product_data.items():
-            setattr(instance.product, attr, value)
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
 
-        instance.product.save()
+            for attr, value in product_data.items():
+                setattr(instance.product, attr, value)
 
-        instance.save()
+            instance.product.save()
 
-        return instance
+            instance.save()
+
+            return instance

@@ -5,6 +5,7 @@ from organization.models import (
     OrganizationUser,
     OrganizationInventory,
     OrganizationInventoryProduct,
+    OrganizationProduct,
 )
 
 
@@ -29,3 +30,4 @@ admin.site.register(Organization, OrganizationAdmin)
 admin.site.register(OrganizationUser, OrganizationUserAdmin)
 admin.site.register(OrganizationInventory)
 admin.site.register(OrganizationInventoryProduct)
+admin.site.register(OrganizationProduct)

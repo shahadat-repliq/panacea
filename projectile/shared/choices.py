@@ -17,3 +17,12 @@ class UserRole(models.TextChoices):
     MANAGER = "MANAGER", "Manager"
     STAFF = "STAFF", "Staff"
     CUSTOMER = "CUSTOMER", "Customer"
+
+
+class ProductForm(models.TextChoices):
+    TABLETS = "TABLETS", "Tablets"
+    SYRUP = "SYRUP", "Syrup"
+    INJECTION = "INJECTION", "Injection"
+    OINTMENT = "OINTMENT", "Ointment"
+    CAPSULE = "CAPSULE", "Capsule"
+    DEFAULT = "NONE", "None"

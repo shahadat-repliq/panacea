@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from django.db import transaction
+from rest_framework import viewsets, pagination
 from rest_framework.generics import (
     ListAPIView,
     CreateAPIView,
@@ -18,6 +19,7 @@ from organization.models import (
     OrganizationInventory,
     OrganizationUser,
     OrganizationInventoryProduct,
+    OrganizationProduct,
 )
 from organization.permissions import IsOrganizationOwnerOrAdmin
 from organization.rest.serializers.organization import (
@@ -156,17 +158,17 @@ class OrganizationInventoryDetailViewSet(RetrieveAPIView):
         return inventory
 
 
-class OrganizationProductViewSet(ListAPIView):
-    serializer_class = OrganizationProductSerializer
-
-    def get_queryset(self):
-        org_id = self.kwargs.get("org_id")
-        organization = get_object_or_404(Organization, pk=org_id)
-
-        queryset = Product.objects.select_related("organization").filter(
-            Q(organization__uid=organization.uid) | Q(organization__uid=None)
-        )
-        return queryset
+# class OrganizationProductViewSet(ListAPIView):
+#     serializer_class = OrganizationProductSerializer
+#
+#     def get_queryset(self):
+#         org_id = self.kwargs.get("org_id")
+#         organization = get_object_or_404(Organization, pk=org_id)
+#
+#         queryset = Product.objects.select_related("organization").filter(
+#             Q(organization__uid=organization.uid) | Q(organization__uid=None)
+#         )
+#         return queryset
 
 
 class CreateOrganizationInventoryProductViewSet(ListAPIView, CreateAPIView):
@@ -228,15 +230,38 @@ class OrganizationInventoryProductDetailViewSet(RetrieveUpdateDestroyAPIView):
         return product
 
     def destroy(self, request, *args, **kwargs):
-        product = self.get_object()
-        product_id = self.kwargs["product_id"]
+        with transaction.atomic():
+            product = self.get_object()
 
-        if not product:
-            raise NotFound("Product not found.")
+            if not product:
+                raise NotFound("Product not found.")
 
-        Product.objects.filter(uid=product_id).delete()
-        product.delete()
-        return Response(
-            {"detail": "Product deleted successfully"},
-            status=status.HTTP_204_NO_CONTENT,
+            try:
+                OrganizationProduct.objects.filter(
+                    uid=self.kwargs.get("product_id")
+                ).delete()
+            except OrganizationProduct.DoesNotExist:
+                raise NotFound("Product not found.")
+            product.delete()
+            return Response(
+                {"detail": "Product deleted successfully"},
+                status=status.HTTP_204_NO_CONTENT,
+            )
+
+
+class OrganizationProductViewSet(ListAPIView):
+    serializer_class = OrganizationProductSerializer
+
+    def get_queryset(self):
+        org_id = self.kwargs.get("org_id")
+
+        global_products = Product.objects.all()
+        org_specific_products = OrganizationProduct.objects.filter(
+            organization__uid=org_id
         )
+
+        combined_queryset = global_products.union(org_specific_products).order_by(
+            "-created_at"
+        )
+
+        return combined_queryset
