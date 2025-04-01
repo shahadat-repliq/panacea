@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from cart.models import Cart, CartItem
+from organization.models import OrganizationProduct
 from product.models import Product
 from shared.serializers import UserSerializer
 from shared.serializers import ProductSerializer
@@ -65,8 +66,13 @@ class AddCartItemSerializer(serializers.ModelSerializer):
     product_id = serializers.UUIDField()
 
     def validate_product_id(self, value):
-        if not Product.objects.filter(pk=value).exists():
-            raise serializers.ValidationError("Invalid product ID")
+        if not (
+            Product.objects.filter(pk=value).exists()
+            or OrganizationProduct.objects.filter(pk=value).exists()
+        ):
+            raise serializers.ValidationError(
+                "Invalid product ID or organization product ID"
+            )
         return value
 
     def save(self, **kwargs):
