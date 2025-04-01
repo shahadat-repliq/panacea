@@ -18,4 +18,5 @@ urlpatterns = [
     path("api/v1/address", include("address.rest.urls.address")),
     path("api/v1/order", include("order.rest.urls.order")),
     path("api/v1/organization", include("organization.rest.urls.organization")),
+    path("api/v1/delivery", include("delivery.rest.urls.delivery")),
 ] + debug_toolbar_urls()

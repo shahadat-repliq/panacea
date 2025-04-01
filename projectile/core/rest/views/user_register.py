@@ -13,6 +13,10 @@ class UserRegisterViewSet(CreateAPIView):
 
 
 class UserViewSet(ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
-    queryset = User.objects.all()
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return User.objects.all()
+        return User.objects.filter(uid=self.request.user.uid)

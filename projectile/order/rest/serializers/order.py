@@ -1,7 +1,9 @@
 from django.db import transaction
 from rest_framework import serializers
 
+from address.models import Address
 from cart.models import Cart, CartItem
+from delivery.models import Delivery
 from order.models import Order, OrderItem
 from shared.serializers import ProductSerializer
 
@@ -52,6 +54,12 @@ class CreateOrderSerializer(serializers.Serializer):
             if not cart_items.exists():
                 raise serializers.ValidationError({"detail": "Cart is empty."})
 
+            address = Address.objects.filter(user__uid=user_id).first()
+            if not address:
+                raise serializers.ValidationError(
+                    {"detail": "Need to create address first to order."}
+                )
+
             order_items = [
                 OrderItem(
                     order=order,
@@ -64,4 +72,15 @@ class CreateOrderSerializer(serializers.Serializer):
 
             OrderItem.objects.bulk_create(order_items)
             cart_items.delete()
+            print(order, "order")
+
+            user = order.user
+
+            delivery = Delivery.objects.create(
+                user=user,
+                order=order,
+                address=address,
+            )
+
+            print(delivery, "delivery")
             return order
