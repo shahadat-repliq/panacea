@@ -3,15 +3,7 @@ from django.db import models
 
 from organization.models import Organization
 from shared.base_model import BaseProductModel
-
-
-class ProductForm(models.TextChoices):
-    TABLETS = "TABLETS", "Tablets"
-    SYRUP = "SYRUP", "Syrup"
-    INJECTION = "INJECTION", "Injection"
-    OINTMENT = "OINTMENT", "Ointment"
-    CAPSULE = "CAPSULE", "Capsule"
-    DEFAULT = "NONE", "None"
+from shared.choices import ProductForm
 
 
 class Product(BaseProductModel):

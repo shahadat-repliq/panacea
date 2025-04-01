@@ -15,4 +15,5 @@ class ProductSerializer(serializers.ModelSerializer):
             "quantity",
             "type",
             "is_active",
+            "organization",
         ]
