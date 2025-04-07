@@ -1,5 +1,7 @@
 import uuid
 
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -17,8 +19,10 @@ class Cart(BaseUserModel):
 
 class CartItem(BaseUserModel):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="cart_items")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.UUIDField()
+    content_object = GenericForeignKey("content_type", "object_id")
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
     class Meta:
-        unique_together = [["cart", "product"]]
+        unique_together = [["cart", "content_type", "object_id"]]

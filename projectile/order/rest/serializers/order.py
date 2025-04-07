@@ -5,26 +5,43 @@ from address.models import Address
 from cart.models import Cart, CartItem
 from delivery.models import Delivery
 from order.models import Order, OrderItem
+from organization.models import OrganizationProduct
+from organization.rest.serializers.organization import OrganizationProductSerializer
+from product.models import Product
 from shared.serializers import ProductSerializer
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer()
+    product = serializers.SerializerMethodField()
+    total_price = serializers.SerializerMethodField()
+
+    def get_total_price(self, order_items):
+        return order_items.quantity * order_items.unit_price
 
     class Meta:
         model = OrderItem
-        fields = ["uid", "product", "unit_price", "quantity"]
+        fields = ["uid", "product", "unit_price", "quantity", "total_price"]
+
+    def get_product(self, obj):
+        if isinstance(obj.content_object, Product):
+            return ProductSerializer(obj.content_object).data
+        elif isinstance(obj.content_object, OrganizationProduct):
+            return OrganizationProductSerializer(obj.content_object).data
+        return None
 
 
 class OrderSerializer(serializers.ModelSerializer):
     order_items = OrderItemSerializer(many=True, read_only=True)
+    total_price = serializers.SerializerMethodField()
+
+    def get_total_price(self, order):
+        return sum(
+            [item.quantity * item.unit_price for item in order.order_items.all()]
+        )
 
     class Meta:
         model = Order
-        fields = [
-            "uid",
-            "order_items",
-        ]
+        fields = ["uid", "order_items", "total_price"]
 
 
 class CreateOrderSerializer(serializers.Serializer):
@@ -34,7 +51,11 @@ class CreateOrderSerializer(serializers.Serializer):
         user_id = self.context["user_uid"]
 
         try:
-            cart = Cart.objects.get(user_id=user_id, uid=value)
+            cart = (
+                Cart.objects.prefetch_related("cart_items", "cart_items__content_type")
+                .select_related("user")
+                .get(user_id=user_id, uid=value)
+            )
         except Cart.DoesNotExist:
             raise serializers.ValidationError(
                 "Cart does not exist or does not belong to you."
@@ -48,9 +69,7 @@ class CreateOrderSerializer(serializers.Serializer):
 
             order = Order.objects.create(user_id=user_id)
 
-            cart_items = CartItem.objects.select_related("product").filter(
-                cart_id=cart_id
-            )
+            cart_items = CartItem.objects.filter(cart_id=cart_id)
             if not cart_items.exists():
                 raise serializers.ValidationError({"detail": "Cart is empty."})
 
@@ -63,24 +82,26 @@ class CreateOrderSerializer(serializers.Serializer):
             order_items = [
                 OrderItem(
                     order=order,
-                    product=item.product,
-                    unit_price=item.product.unit_price,
+                    content_type=item.content_type,
+                    object_id=item.object_id,
+                    unit_price=item.content_object.unit_price,
                     quantity=item.quantity,
                 )
                 for item in cart_items
+                if isinstance(item.content_object, (Product, OrganizationProduct))
             ]
 
             OrderItem.objects.bulk_create(order_items)
             cart_items.delete()
-            print(order, "order")
 
             user = order.user
 
-            delivery = Delivery.objects.create(
+            Delivery.objects.select_related(
+                "order", "user", "address"
+            ).create(
                 user=user,
                 order=order,
                 address=address,
             )
 
-            print(delivery, "delivery")
             return order
