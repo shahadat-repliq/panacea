@@ -67,17 +67,39 @@ class CreateOrderSerializer(serializers.Serializer):
             cart_id = self.validated_data["cart_id"]
             user_id = self.context["user_uid"]
 
-            order = Order.objects.create(user_id=user_id)
-
-            cart_items = CartItem.objects.filter(cart_id=cart_id)
+            cart_items = CartItem.objects.select_related("content_type").filter(
+                cart_id=cart_id
+            )
             if not cart_items.exists():
                 raise serializers.ValidationError({"detail": "Cart is empty."})
+
+            for item in cart_items:
+                item.content_object = item.content_object
+
+            for item in cart_items:
+                product = item.content_object
+                if not isinstance(product, (Product, OrganizationProduct)):
+                    raise serializers.ValidationError(
+                        {"detail": f"Invalid product type in cart item {item.uid}."}
+                    )
+                if item.quantity <= 0:
+                    raise serializers.ValidationError(
+                        {"detail": f"Invalid quantity for item {item.uid}."}
+                    )
+                if item.quantity > product.quantity:
+                    raise serializers.ValidationError(
+                        {
+                            "detail": f"Not enough stock for product '{product}'. Available: {product.quantity}, Requested: {item.quantity}"
+                        }
+                    )
 
             address = Address.objects.filter(user__uid=user_id).first()
             if not address:
                 raise serializers.ValidationError(
                     {"detail": "Need to create address first to order."}
                 )
+
+            order = Order.objects.create(user_id=user_id)
 
             order_items = [
                 OrderItem(
@@ -89,6 +111,17 @@ class CreateOrderSerializer(serializers.Serializer):
                 )
                 for item in cart_items
                 if isinstance(item.content_object, (Product, OrganizationProduct))
+                and not setattr(
+                    item.content_object,
+                    "quantity",
+                    item.content_object.quantity - item.quantity,
+                )
+            ]
+
+            [
+                item.content_object.save()
+                for item in cart_items
+                if isinstance(item.content_object, (Product, OrganizationProduct))
             ]
 
             OrderItem.objects.bulk_create(order_items)
@@ -96,9 +129,7 @@ class CreateOrderSerializer(serializers.Serializer):
 
             user = order.user
 
-            Delivery.objects.select_related(
-                "order", "user", "address"
-            ).create(
+            Delivery.objects.select_related("order", "user", "address").create(
                 user=user,
                 order=order,
                 address=address,
