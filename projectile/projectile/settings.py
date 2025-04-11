@@ -33,6 +33,7 @@ PROJECT_APPS = [
     "address",
     "order",
     "organization",
+    "delivery",
 ]
 
 THIRD_PARTY_APPS = [

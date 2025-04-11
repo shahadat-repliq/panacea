@@ -1,4 +1,4 @@
-from django.db.models import Sum
+from django.db.models import Sum, Prefetch
 from django.db.models.functions import Coalesce
 
 from rest_framework.generics import (
@@ -36,12 +36,17 @@ class CartDetailViewSet(RetrieveAPIView):
     lookup_field = "uid"
 
     def get_queryset(self):
+        cart_id = self.kwargs["uid"]
+        cart_items_prefetch = Prefetch(
+            "cart_items",
+            queryset=CartItem.objects.select_related("content_type").prefetch_related(
+                "content_object",
+            ),
+        )
         queryset = (
-            Cart.objects.prefetch_related("cart_items", "cart_items__product", "user")
-            .filter(
-                uid=self.kwargs["uid"],
-                user=self.request.user,
-            )
+            Cart.objects.select_related("user")
+            .prefetch_related(cart_items_prefetch)
+            .filter(uid=cart_id, user=self.request.user)
             .annotate(total_count=Coalesce(Sum("cart_items__quantity"), 0))
         )
         return queryset
@@ -59,7 +64,7 @@ class CartItemViewSet(ListAPIView, RetrieveAPIView, CreateAPIView, DestroyAPIVie
 
     def get_queryset(self):
         cart_id = self.kwargs["uid"]
-        return CartItem.objects.select_related("product").filter(
+        return CartItem.objects.filter(
             cart_id=cart_id,
         )
 
@@ -94,14 +99,10 @@ class CartItemDetailViewSet(RetrieveUpdateAPIView, DestroyAPIView):
         cart_id = self.kwargs["uid"]
         cart_item_id = self.kwargs["pk"]
 
-        queryset = CartItem.objects.select_related("product").filter(
-            cart_id=cart_id, uid=cart_item_id
+        queryset = (
+            CartItem.objects.select_related("content_type", "cart")
+            .prefetch_related("content_object")
+            .filter(cart_id=cart_id, uid=cart_item_id)
         )
-
-        # if not queryset.exists():
-        #     return Response(
-        #         {"detail": "No cart item found for the provided cart ID and item ID."},
-        #         status=status.HTTP_404_NOT_FOUND,
-        #     )
 
         return queryset

@@ -26,3 +26,11 @@ class ProductForm(models.TextChoices):
     OINTMENT = "OINTMENT", "Ointment"
     CAPSULE = "CAPSULE", "Capsule"
     DEFAULT = "NONE", "None"
+
+
+class DeliveryStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    PROCESSING = "PROCESSING", "Processing"
+    ON_THE_WAY = "ON_THE_WAY", "On The Way"
+    COMPLETED = "COMPLETED", "Completed"
+    CANCELED = "CANCELED", "Canceled"

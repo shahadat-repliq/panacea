@@ -7,8 +7,8 @@ class CartAdmin(admin.ModelAdmin):
     list_display = ["uid", "user__uid", "user", "created_at"]
     ordering = ["-created_at"]
 
-    def has_delete_permission(self, request, obj=...):
-        return False
+    # def has_delete_permission(self, request, obj=...):
+    #     return False
 
 
 admin.site.register(Cart, CartAdmin)
