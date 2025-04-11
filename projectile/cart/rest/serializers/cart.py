@@ -92,14 +92,27 @@ class AddCartItemSerializer(serializers.ModelSerializer):
         product_id = self.validated_data["product_id"]
         quantity = self.validated_data["quantity"]
 
+        # if self.product_type == "product":
+        #     product_instance = Product.objects.get(uid=product_id)
+        #     content_type = ContentType.objects.get_for_model(Product)
+        #     object_id = product_instance.uid  # Store the UID of the Product instance
+        # else:
+        #     product_instance = OrganizationProduct.objects.get(uid=product_id)
+        #     content_type = ContentType.objects.get_for_model(OrganizationProduct)
+        #     object_id = product_instance.uid
+
         if self.product_type == "product":
             product_instance = Product.objects.get(uid=product_id)
-            content_type = ContentType.objects.get_for_model(Product)
-            object_id = product_instance.uid  # Store the UID of the Product instance
         else:
             product_instance = OrganizationProduct.objects.get(uid=product_id)
-            content_type = ContentType.objects.get_for_model(OrganizationProduct)
-            object_id = product_instance.uid
+
+        if quantity > product_instance.quantity:
+            raise serializers.ValidationError(
+                f"Only {product_instance.quantity} items available in stock."
+            )
+
+        content_type = ContentType.objects.get_for_model(product_instance.__class__)
+        object_id = product_instance.uid
 
         cart_item, created = CartItem.objects.update_or_create(
             cart_id=cart_id,
