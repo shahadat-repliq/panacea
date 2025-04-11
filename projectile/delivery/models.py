@@ -4,9 +4,22 @@ from django.db import models
 from address.models import Address
 from order.models import Order
 from shared.base_model import BaseModel
-from shared.choices import DeliveryStatus
+from shared.choices import DeliveryStatus, UserRole
 
 User = get_user_model()
+
+
+class DeliveryUser(BaseModel):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+    )
+    role = models.CharField(
+        max_length=100, choices=UserRole.choices, default=UserRole.STAFF
+    )
+
+    def __str__(self):
+        return f"{self.user.phone_number} {self.role}"
 
 
 class Delivery(BaseModel):
@@ -16,7 +29,7 @@ class Delivery(BaseModel):
         related_name="deliveries",
     )
     assignee = models.ForeignKey(
-        User,
+        DeliveryUser,
         on_delete=models.CASCADE,
         related_name="assigned_deliveries",
         blank=True,
