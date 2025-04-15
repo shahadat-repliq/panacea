@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import transaction
@@ -184,7 +185,7 @@ class CreateOrganizationSerializer(serializers.Serializer):
 
             user, created = User.objects.get_or_create(
                 phone_number=phone_number,
-                defaults={"password": password},
+                defaults={"password": make_password(password)},
             )
 
             organization = Organization.objects.prefetch_related("users").create(

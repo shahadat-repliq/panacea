@@ -10,7 +10,7 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
     RetrieveDestroyAPIView,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -75,6 +75,7 @@ class OrganizationDetailViewSet(RetrieveAPIView):
 class CreateOrganizationViewSet(CreateAPIView):
     queryset = Organization.objects.all()
     serializer_class = CreateOrganizationSerializer
+    permission_classes = (AllowAny,)
 
 
 class OrganizationInventoryViewSet(ListAPIView):

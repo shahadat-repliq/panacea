@@ -25,7 +25,7 @@ class DeliveryViewSet(ListAPIView, RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Delivery.objects.filter(user=self.request.user)
+        return Delivery.objects.all()
 
 
 class DeliveryUserViewSet(ListAPIView):

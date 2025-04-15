@@ -31,7 +31,7 @@ class DeliveryUserSerializer(serializers.ModelSerializer):
 
 class CreateDeliveryUserSerializer(serializers.Serializer):
     phone_number = PhoneNumberField(write_only=True)
-    role = serializers.CharField()
+    # role = serializers.CharField()
 
     def validate_phone_number(self, value):
         user = User.objects.filter(phone_number=value).first()
@@ -46,17 +46,19 @@ class CreateDeliveryUserSerializer(serializers.Serializer):
     def create(self, validated_data):
         with transaction.atomic():
             phone_number = validated_data["phone_number"]
-            role = validated_data["role"]
+            # role = validated_data["role"]
 
             user = User.objects.filter(phone_number=phone_number).first()
 
             if DeliveryUser.objects.filter(user=user).exists():
                 raise serializers.ValidationError("Delivery user already exists")
 
-            if role not in UserRole.values:
-                raise serializers.ValidationError("Role doesn't exist")
+            # if role not in UserRole.values:
+            #     raise serializers.ValidationError("Role doesn't exist")
 
-            delivery_user = DeliveryUser.objects.create(user=user, role=role)
+            delivery_user = DeliveryUser.objects.create(
+                user=user,
+            )
 
             return delivery_user
 
