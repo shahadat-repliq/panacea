@@ -34,3 +34,10 @@ class DeliveryStatus(models.TextChoices):
     ON_THE_WAY = "ON_THE_WAY", "On The Way"
     COMPLETED = "COMPLETED", "Completed"
     CANCELED = "CANCELED", "Canceled"
+
+
+class ProductRequestStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Rejected"
+    CANCELED = "CANCELED", "Canceled"
