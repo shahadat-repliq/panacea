@@ -1,9 +1,9 @@
 import uuid
 from django.db import models
 
-from organization.models import Organization
+from organization.models import Organization, OrganizationProduct, OrganizationUser
 from shared.base_model import BaseProductModel
-from shared.choices import ProductForm
+from shared.choices import ProductForm, ProductRequestStatus
 
 
 class Product(BaseProductModel):
@@ -23,3 +23,17 @@ class Product(BaseProductModel):
 
     def __str__(self):
         return self.title
+
+
+class ProductRequest(BaseProductModel):
+    product = models.ForeignKey(OrganizationProduct, on_delete=models.CASCADE)
+    user = models.ForeignKey(OrganizationUser, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    status = models.CharField(
+        ProductRequestStatus,
+        choices=ProductRequestStatus.choices,
+        default=ProductRequestStatus.PENDING,
+    )
+
+    def __str__(self):
+        return self.product.title
