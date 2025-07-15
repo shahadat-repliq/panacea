@@ -30,7 +30,9 @@ class DeliveryUserSerializer(serializers.ModelSerializer):
 
 
 class CreateDeliveryUserSerializer(serializers.Serializer):
-    phone_number = PhoneNumberField(write_only=True)
+    phone_number = PhoneNumberField(
+        write_only=True,
+    )
     # role = serializers.CharField()
 
     def validate_phone_number(self, value):

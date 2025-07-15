@@ -3,10 +3,10 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 
 from address.models import Address
+from delivery.models import DeliveryUser
 
 
 class CreateAddressSerializer(serializers.Serializer):
-    user = PhoneNumberField()
     street_address = serializers.CharField(max_length=255)
     city = serializers.CharField(max_length=255)
     state = serializers.CharField(max_length=255)
@@ -14,17 +14,13 @@ class CreateAddressSerializer(serializers.Serializer):
     country = serializers.CharField(max_length=255)
     is_primary_address = serializers.BooleanField(default=False)
 
-    def validate_user(self, value):
-        request_user = self.context["user"]
-        if value != request_user.phone_number:
-            raise serializers.ValidationError(
-                "Your phone number does not match the one associated with your account."
-            )
-
-        return value
-
     def create(self, validated_data):
         request_user = self.context["user"]
+
+        if DeliveryUser.objects.filter(user=request_user).exists():
+            raise serializers.ValidationError(
+                {"detail": "Delivery user cannot create address"}
+            )
 
         address = Address.objects.create(
             user=request_user,

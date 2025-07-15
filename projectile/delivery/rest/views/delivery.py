@@ -5,8 +5,9 @@ from rest_framework.generics import (
     UpdateAPIView,
     RetrieveAPIView,
     CreateAPIView,
+    GenericAPIView,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
 from delivery.models import Delivery, DeliveryUser
@@ -28,16 +29,42 @@ class DeliveryViewSet(ListAPIView, RetrieveAPIView):
         return Delivery.objects.all()
 
 
-class DeliveryUserViewSet(ListAPIView):
-    serializer_class = DeliveryUserSerializer
-
-    queryset = DeliveryUser.objects.all()
+class DeliveryUserViewSet(GenericAPIView):
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return DeliveryUser.objects.all()
+        return DeliveryUser.objects.filter(user=user)
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return CreateDeliveryUserSerializer
+        return DeliveryUserSerializer
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CreateDeliveryUserViewSet(CreateAPIView):
     serializer_class = CreateDeliveryUserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     queryset = DeliveryUser.objects.all()
 
 

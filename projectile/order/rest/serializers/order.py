@@ -45,7 +45,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class CreateOrderSerializer(serializers.Serializer):
-    cart_id = serializers.UUIDField()
 
     def validate_cart_id(self, value):
         user_id = self.context["user_uid"]
@@ -64,8 +63,12 @@ class CreateOrderSerializer(serializers.Serializer):
 
     def save(self):
         with transaction.atomic():
-            cart_id = self.validated_data["cart_id"]
             user_id = self.context["user_uid"]
+
+            try:
+                cart_id = Cart.objects.get(user__uid=user_id)
+            except Cart.DoesNotExist:
+                raise serializers.ValidationError("Cart does not exist.")
 
             cart_items = CartItem.objects.select_related("content_type").filter(
                 cart_id=cart_id

@@ -23,6 +23,7 @@ from product.rest.serializers.product import (
 
 class ProductViewSet(ListAPIView):
     serializer_class = ProductSerializer
+    permission_classes = (AllowAny,)
 
     def get_queryset(self):
         return Product.objects.all().order_by("-created_at")
